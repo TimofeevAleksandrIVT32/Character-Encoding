@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include "encode.h"
 
 //Проверка входных аргументов и создание экземпляра структуры для их хранения
@@ -147,6 +148,53 @@ unsigned char *byte_change(unsigned char *utf_text, unsigned char byte, int *siz
     utf_text[(*i)] = (sum >> 8) & 0xFF;
     utf_text[(*i) + 1] = sum & 0xFF;
     *i += 2;
+    return utf_text;
+}
+
+//Функция конвертора из KOI8-R в UTF-8
+unsigned char *koi(unsigned char *text, int size) {
+    unsigned char *utf_text = (unsigned char *)malloc(sizeof(unsigned char *) * size);
+    if (utf_text == NULL) {
+        printf("Memory allocation error\n");
+        return NULL;
+    }
+    int i = 0;
+    //В этом массиве в элементе с индексом символа (если начинать с ю) из таблицы KOI8-R 
+    //содержится значение этого символа из таблицы UTF-8
+    uint16_t match_koi_utf[128] = {0xD18E,0xD0B0,0xD0B1,0xD186,0xD0B4,
+    0xD0B5,0xD184,0xD0B3,0xD185,0xD0B8,0xD0B9,0xD0BA,0xD0BB,0xD0BC,0xD0BD,0xD0BE,
+    0xD0BF,0xD18F,0xD180,0xD181,0xD182,0xD183,0xD0B6,0xD0B2,0xD18C,0xD18B,0xD0B7,
+    0xD188,0xD18D,0xD189,0xD187,0xD18A,0xD0AE,0xD090,0xD091,0xD0A6,0xD094,0xD095,
+    0xD0A4,0xD093,0xD0A5,0xD098,0xD099,0xD09A,0xD09B,0xD09C,0xD09D,0xD09E,0xD09F,
+    0xD0AF,0xD0A0,0xD0A1,0xD0A2,0xD0A3,0xD096,0xD092,0xD0AC,0xD0AB,0xD097,0xD0A8,
+    0xD0AD,0xD0A9,0xD0A7,0xD0AA};
+    while (*text != '\0') {
+        if(*text >= 0xC0) {
+            unsigned int j = 0xC0;
+            int k = 0;
+            while (k < 64) {
+                if ((*text) == j) {
+                    size++;
+                    unsigned char *temp = (unsigned char *)realloc(utf_text, sizeof(unsigned char *) * size);
+                    if (temp == NULL) {
+                        printf("Memory allocation error\n");
+                        return NULL;
+                    } 
+                    utf_text = temp;
+                    utf_text[i] = (match_koi_utf[k] >> 8) & 0xFF;
+                    utf_text[i + 1] = match_koi_utf[k] & 0xFF;
+                    i += 2;
+                }
+                j+=0x01;
+                k++;
+            }
+        }
+        else {
+            utf_text[i] = *text;
+            i++;
+        }
+        text++;
+    }
     return utf_text;
 }
 
