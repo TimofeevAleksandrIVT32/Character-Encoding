@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include "encode.h"
 
 int main(int argc, char *argv[]) {
@@ -16,7 +17,12 @@ int main(int argc, char *argv[]) {
         free_mem(arg, text, utf_text);
         return 1;
     }
-    utf_text = cp_iso(text, size, arg->code);
+    if (arg->code == 'k' || arg->code == 'K') {
+        utf_text = koi(text, size);
+    }
+    else {
+        utf_text = cp_iso(text, size, arg->code);
+    }
     if (utf_text == NULL) {
         free_mem(arg, text, utf_text);
         return 1;
