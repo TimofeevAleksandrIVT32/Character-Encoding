@@ -3,6 +3,7 @@
 #define DIF_CP_UTF2 0xD090 //р-я
 #define DIF_ISO_UTF1 0xCFE0 //А-Я, а-п
 #define DIF_ISO_UTF2 0xD0A0 //р-я
+#define N 64 //Количество символов на замену в KOI8-R
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -172,7 +173,7 @@ unsigned char *koi(unsigned char *text, int size) {
         if(*text >= 0xC0) {
             unsigned int j = 0xC0;
             int k = 0;
-            while (k < 64) {
+            while (k < N) {
                 if ((*text) == j) {
                     size++;
                     unsigned char *temp = (unsigned char *)realloc(utf_text, sizeof(unsigned char *) * size);
