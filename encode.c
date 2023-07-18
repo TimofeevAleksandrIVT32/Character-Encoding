@@ -3,7 +3,9 @@
 #define DIF_CP_UTF2 0xD090 //р-я
 #define DIF_ISO_UTF1 0xCFE0 //А-Я, а-п
 #define DIF_ISO_UTF2 0xD0A0 //р-я
-#define N 64 //Количество символов на замену в KOI8-R
+#define KOI_UTF 0 //Нужное значение сразу хранится в массиве
+#define KOI_MIN 0xC0
+#define KOI_MAX 0xFF
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -95,28 +97,28 @@ unsigned char *cp_iso(unsigned char *text, int size, char code) {
     while (*text != '\0') {
         if(*text >= 0xB0) {
             if((code == 'c' || code == 'C') && (*text >= 0xC0) && (*text <= 0xEF)) {
-                temp = byte_change(utf_text, *text, &size, &i, DIF_CP_UTF1);
+                temp = byte_change(utf_text, (uint16_t)*text, &size, &i, DIF_CP_UTF1);
                 if (temp == NULL) {
                     return NULL;
                 } 
                 utf_text = temp;
             }
             else if((code == 'c' || code == 'C') && (*text >= 0xF0)) {
-                temp = byte_change(utf_text, *text, &size, &i, DIF_CP_UTF2);
+                temp = byte_change(utf_text, (uint16_t)*text, &size, &i, DIF_CP_UTF2);
                 if (temp == NULL) {
                     return NULL;
                 } 
                 utf_text = temp;
             }
             else if((code == 'i' || code == 'I') && (*text >= 0xB0) && (*text <= 0xDF)) {
-                temp = byte_change(utf_text, *text, &size, &i, DIF_ISO_UTF1);
+                temp = byte_change(utf_text, (uint16_t)*text, &size, &i, DIF_ISO_UTF1);
                 if (temp == NULL) {
                     return NULL;
                 } 
                 utf_text = temp;
             }
             else if((code == 'i' || code == 'I') && (*text >= 0xE0) && (*text <= 0xEF)) {
-                temp = byte_change(utf_text, *text, &size, &i, DIF_ISO_UTF2);
+                temp = byte_change(utf_text, (uint16_t)*text, &size, &i, DIF_ISO_UTF2);
                 if (temp == NULL) {
                     return NULL;
                 } 
@@ -137,7 +139,7 @@ unsigned char *cp_iso(unsigned char *text, int size, char code) {
 }
 
 //Замена нужных байтов из CP-1251 и ISO-8859-5 в UTF-8
-unsigned char *byte_change(unsigned char *utf_text, unsigned char byte, int *size, int *i, unsigned int diff) {
+unsigned char *byte_change(unsigned char *utf_text, uint16_t byte, int *size, int *i, unsigned int diff) {
     (*size)++;
     unsigned char *temp = (unsigned char *)realloc(utf_text, sizeof(unsigned char *) * (*size));
     if (temp == NULL) {
@@ -159,6 +161,7 @@ unsigned char *koi(unsigned char *text, int size) {
         printf("Memory allocation error\n");
         return NULL;
     }
+    unsigned char *temp;
     int i = 0;
     //В этом массиве в элементе с индексом символа (если начинать с ю) из таблицы KOI8-R 
     //содержится значение этого символа из таблицы UTF-8
@@ -170,24 +173,17 @@ unsigned char *koi(unsigned char *text, int size) {
     0xD0AF,0xD0A0,0xD0A1,0xD0A2,0xD0A3,0xD096,0xD092,0xD0AC,0xD0AB,0xD097,0xD0A8,
     0xD0AD,0xD0A9,0xD0A7,0xD0AA};
     while (*text != '\0') {
-        if(*text >= 0xC0) {
-            unsigned int j = 0xC0;
-            int k = 0;
-            while (k < N) {
-                if ((*text) == j) {
-                    size++;
-                    unsigned char *temp = (unsigned char *)realloc(utf_text, sizeof(unsigned char *) * size);
+        if(*text >= KOI_MIN) {
+            unsigned int select = KOI_MIN;
+            while (select <= KOI_MAX) {
+                if ((*text) == select) {
+                    temp = byte_change(utf_text, match_koi_utf[select - KOI_MIN], &size, &i, KOI_UTF);
                     if (temp == NULL) {
-                        printf("Memory allocation error\n");
                         return NULL;
-                    } 
+                    }
                     utf_text = temp;
-                    utf_text[i] = (match_koi_utf[k] >> 8) & 0xFF;
-                    utf_text[i + 1] = match_koi_utf[k] & 0xFF;
-                    i += 2;
                 }
-                j+=0x01;
-                k++;
+                select+=0x01;
             }
         }
         else {
