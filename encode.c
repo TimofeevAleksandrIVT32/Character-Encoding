@@ -138,7 +138,7 @@ unsigned char *cp_iso(unsigned char *text, int size, char code) {
     return utf_text;
 }
 
-//Замена нужных байтов из CP-1251 и ISO-8859-5 в UTF-8
+//Замена нужных байтов из CP-1251, ISO-8859-5 и KOI8-R в UTF-8
 unsigned char *byte_change(unsigned char *utf_text, uint16_t byte, int *size, int *i, unsigned int diff) {
     (*size)++;
     unsigned char *temp = (unsigned char *)realloc(utf_text, sizeof(unsigned char *) * (*size));
