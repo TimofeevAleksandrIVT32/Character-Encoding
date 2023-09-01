@@ -1,168 +1,76 @@
-//В макросах хранится разница в коде для 1 и того же символа между кодировками
-#define DIF_CP_UTF1 0xCFD0 //А-Я, а-п
-#define DIF_CP_UTF2 0xD090 //р-я
-#define DIF_ISO_UTF1 0xCFE0 //А-Я, а-п
-#define DIF_ISO_UTF2 0xD0A0 //р-я
-#define KOI_UTF 0 //Нужное значение сразу хранится в массиве
-#define KOI_MIN 0xC0
-#define KOI_MAX 0xFF
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include "encode.h"
 
-//Проверка входных аргументов и создание экземпляра структуры для их хранения
-struct args *arg_processing(int argc, char *argv[]) {
-    struct args *arg;
-    if (argc != 4) {
-        printf("Invalid number of arguments\n");
-        return NULL;
-    }
-    if (strcmp(argv[2], "cp")!=0 && strcmp(argv[2], "cp-1251")!=0 && strcmp(argv[2], "CP-1251")!=0 &&
-    strcmp(argv[2], "koi")!=0 && strcmp(argv[2], "koi8-r")!=0 && strcmp(argv[2], "KOI8-R")!=0 &&
-    strcmp(argv[2], "iso")!=0 && strcmp(argv[2], "iso-8859-5")!=0 && strcmp(argv[2], "ISO-8859-5")!=0) {
-        printf("Wrong encoding entered\n");
-        return NULL;
-    }
-    else {
-        arg = (struct args*)malloc(sizeof(struct args));
-        if (arg == NULL) {
-            printf("Memory allocation error\n");
-            return NULL;
-        }
-        arg->infile = malloc(sizeof(char)*strlen(argv[1]));
-        if (arg->infile == NULL) {
-            printf("Memory allocation error\n");
-            free(arg);
-            return NULL;
-        }
-        arg->outfile = malloc(sizeof(char)*strlen(argv[3]));
-        if (arg->outfile == NULL) {
-            printf("Memory allocation error\n");
-            free(arg->infile);
-            free(arg);
-            return NULL;
-        }
-        strcpy(arg->infile,argv[1]);
-        strncpy(&arg->code,argv[2],1);
-        strcpy(arg->outfile,argv[3]);
-    }
-    return arg;
-}
-
-//Считываем текст из документа в строку
-unsigned char *read_file(char *name_file, int *size) {
-    unsigned char *text;
-    FILE *file = fopen(name_file, "rb");
-    if (!file) {
-        printf("Failed to open file\n");
-	    return NULL;
-    }
-    *size = file_size(file);
-    text = (unsigned char *)malloc(sizeof(unsigned char) * (*size + 1));
-    if (text == NULL) {
-        printf("Memory allocation error\n");
-        fclose(file);
-        return NULL;
-    }
-    int nbytes = fread(text, 1, *size, file);
-    if (nbytes != *size) {
-        printf("Failed to read data from file\n");
-        fclose(file);
-	    return NULL;
-    }
-    (*size)++;
-    fclose(file);
-    return text;
-}
-
-int file_size(FILE *file) {
-    fseek(file, 0, SEEK_END);
-    int size = ftell(file);
-    rewind(file);
-    return size;
-}
-
 //Функция конвертора из CP-1251 и ISO-8859-5 в UTF-8
-unsigned char *cp_iso(unsigned char *text, int size, char code) {
-    unsigned char *utf_text = (unsigned char *)malloc(sizeof(unsigned char *) * size);
-    if (utf_text == NULL) {
-        printf("Memory allocation error\n");
-        return NULL;
+int cp_iso(char *name_infile, char *name_outfile, char code) {
+    FILE *infile = fopen(name_infile, "rb");
+    if (!infile) {
+        printf("Failed to open file\n");
+	    return 1;
     }
-    unsigned char *temp;
-    int i = 0;
-    while (*text != '\0') {
-        if(*text >= 0xB0) {
-            if((code == 'c' || code == 'C') && (*text >= 0xC0) && (*text <= 0xEF)) {
-                temp = byte_change(utf_text, (uint16_t)*text, &size, &i, DIF_CP_UTF1);
-                if (temp == NULL) {
-                    return NULL;
-                } 
-                utf_text = temp;
+    FILE* outfile = fopen(name_outfile, "w");
+    if (outfile == NULL) {
+        printf("Failed to open file\n");
+        return 1;
+    }
+    int ch;
+    unsigned char new_byte[2];
+    while ((ch = fgetc(infile)) != EOF) {
+        if(ch >= 0xB0) {
+            if((code == 'c' || code == 'C') && (ch >= 0xC0) && (ch <= 0xEF)) {
+                byte_change(new_byte, ch, DIF_CP_UTF1);
+                fprintf(outfile, "%s", new_byte);
             }
-            else if((code == 'c' || code == 'C') && (*text >= 0xF0)) {
-                temp = byte_change(utf_text, (uint16_t)*text, &size, &i, DIF_CP_UTF2);
-                if (temp == NULL) {
-                    return NULL;
-                } 
-                utf_text = temp;
+            else if((code == 'c' || code == 'C') && (ch >= 0xF0)) {
+                byte_change(new_byte, ch, DIF_CP_UTF2);
+                fprintf(outfile, "%s", new_byte);
             }
-            else if((code == 'i' || code == 'I') && (*text >= 0xB0) && (*text <= 0xDF)) {
-                temp = byte_change(utf_text, (uint16_t)*text, &size, &i, DIF_ISO_UTF1);
-                if (temp == NULL) {
-                    return NULL;
-                } 
-                utf_text = temp;
+            else if((code == 'i' || code == 'I') && (ch >= 0xB0) && (ch <= 0xDF)) {
+                byte_change(new_byte, ch, DIF_ISO_UTF1);
+                fprintf(outfile, "%s", new_byte);
             }
-            else if((code == 'i' || code == 'I') && (*text >= 0xE0) && (*text <= 0xEF)) {
-                temp = byte_change(utf_text, (uint16_t)*text, &size, &i, DIF_ISO_UTF2);
-                if (temp == NULL) {
-                    return NULL;
-                } 
-                utf_text = temp;
+            else if((code == 'i' || code == 'I') && (ch >= 0xE0) && (ch <= 0xEF)) {
+                byte_change(new_byte, ch, DIF_ISO_UTF2);
+                fprintf(outfile, "%s", new_byte);
             }
             else {
-                utf_text[i] = *text;
-                i++;
+                fputc(ch, outfile);
             }
         }
         else {
-            utf_text[i] = *text;
-            i++;
+            fputc(ch, outfile);
         }
-        text++;
     }
-    return utf_text;
+    fclose(infile);
+    fclose(outfile);
+    return 0;
 }
 
 //Замена нужных байтов из CP-1251, ISO-8859-5 и KOI8-R в UTF-8
-unsigned char *byte_change(unsigned char *utf_text, uint16_t byte, int *size, int *i, unsigned int diff) {
-    (*size)++;
-    unsigned char *temp = (unsigned char *)realloc(utf_text, sizeof(unsigned char *) * (*size));
-    if (temp == NULL) {
-        printf("Memory allocation error\n");
-        return NULL;
-    } 
-    utf_text = temp;
+unsigned char *byte_change(unsigned char *new_byte, uint16_t byte, unsigned int diff) {
     unsigned int sum = (unsigned int)(byte) + diff;
-    utf_text[(*i)] = (sum >> 8) & 0xFF;
-    utf_text[(*i) + 1] = sum & 0xFF;
-    *i += 2;
-    return utf_text;
+    new_byte[0] = (sum >> 8) & 0xFF;
+    new_byte[1] = sum & 0xFF;
+    return new_byte;
 }
 
 //Функция конвертора из KOI8-R в UTF-8
-unsigned char *koi(unsigned char *text, int size) {
-    unsigned char *utf_text = (unsigned char *)malloc(sizeof(unsigned char *) * size);
-    if (utf_text == NULL) {
-        printf("Memory allocation error\n");
-        return NULL;
+int koi(char *name_infile, char *name_outfile) {
+    FILE *infile = fopen(name_infile, "rb");
+    if (!infile) {
+        printf("Failed to open file\n");
+	    return 1;
     }
-    unsigned char *temp;
-    int i = 0;
+    FILE* outfile = fopen(name_outfile, "w");
+    if (outfile == NULL) {
+        printf("Failed to open file\n");
+        return 1;
+    }
+    int ch;
+    unsigned char new_byte[2];
     //В этом массиве в элементе с индексом символа (если начинать с ю) из таблицы KOI8-R 
     //содержится значение этого символа из таблицы UTF-8
     uint16_t match_koi_utf[128] = {0xD18E,0xD0B0,0xD0B1,0xD186,0xD0B4,
@@ -172,48 +80,22 @@ unsigned char *koi(unsigned char *text, int size) {
     0xD0A4,0xD093,0xD0A5,0xD098,0xD099,0xD09A,0xD09B,0xD09C,0xD09D,0xD09E,0xD09F,
     0xD0AF,0xD0A0,0xD0A1,0xD0A2,0xD0A3,0xD096,0xD092,0xD0AC,0xD0AB,0xD097,0xD0A8,
     0xD0AD,0xD0A9,0xD0A7,0xD0AA};
-    while (*text != '\0') {
-        if(*text >= KOI_MIN) {
+    while ((ch = fgetc(infile)) != EOF) {
+        if(ch >= KOI_MIN) {
             unsigned int select = KOI_MIN;
             while (select <= KOI_MAX) {
-                if ((*text) == select) {
-                    temp = byte_change(utf_text, match_koi_utf[select - KOI_MIN], &size, &i, KOI_UTF);
-                    if (temp == NULL) {
-                        return NULL;
-                    }
-                    utf_text = temp;
+                if ((ch) == (int)select) {
+                    byte_change(new_byte, match_koi_utf[select - KOI_MIN], KOI_UTF);
+                    fprintf(outfile, "%s", new_byte);
                 }
                 select+=0x01;
             }
         }
         else {
-            utf_text[i] = *text;
-            i++;
+            fputc(ch, outfile);
         }
-        text++;
     }
-    return utf_text;
-}
-
-void write_file(unsigned char *utf_text, char *file_name) {
-    FILE* file = fopen(file_name, "w");
-    if (file == NULL) {
-        printf("Failed to open file\n");
-        return;
-    }
-    fprintf(file, "%s", utf_text);
-    fclose(file);
-    printf("The text was successfully written to the file\n");
-}
-
-void free_mem(struct args *arg, unsigned char *text, unsigned char *utf_text) {
-    free(arg->infile);
-    free(arg->outfile);
-    free(arg);
-    if (text != NULL) {
-        free(text);
-    }
-    if (utf_text != NULL) {
-        free(utf_text);
-    }
+    fclose(infile);
+    fclose(outfile);
+    return 0;
 }
