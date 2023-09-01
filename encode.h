@@ -1,18 +1,16 @@
 #ifndef ENCODE_H
 #define ENCODE_H
 
-struct args {
-    char *infile;
-    char code;
-    char *outfile;
-};
+//В макросах хранится разница в коде для 1 и того же символа между кодировками
+#define DIF_CP_UTF1 0xCFD0 //А-Я, а-п
+#define DIF_CP_UTF2 0xD090 //р-я
+#define DIF_ISO_UTF1 0xCFE0 //А-Я, а-п
+#define DIF_ISO_UTF2 0xD0A0 //р-я
+#define KOI_UTF 0 //Нужное значение сразу хранится в массиве
+#define KOI_MIN 0xC0
+#define KOI_MAX 0xFF
 
-struct args *arg_processing(int argc, char *argv[]);
-unsigned char *read_file(char *name_file, int *size);
-int file_size(FILE *file);
-unsigned char *cp_iso(unsigned char *text, int size, char code);
-unsigned char *byte_change(unsigned char *utf_text, uint16_t byte, int *size, int *i, unsigned int diff);
-unsigned char *koi(unsigned char *text, int size);
-void write_file(unsigned char *utf_text, char *file_name);
-void free_mem(struct args *arg, unsigned char *text, unsigned char *utf_text);
+int cp_iso(char *name_infile, char *name_outfile, char code);
+unsigned char *byte_change(unsigned char *new_byte, uint16_t byte, unsigned int diff);
+int koi(char *name_infile, char *name_outfile);
 #endif /* ENCODE_H */
