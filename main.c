@@ -5,30 +5,25 @@
 #include "encode.h"
 
 int main(int argc, char *argv[]) {
-    int size;
-    unsigned char *text = NULL;
-    unsigned char *utf_text = NULL;
-    struct args *arg = arg_processing(argc, argv);
-    if (arg == NULL) {
+    if (argc != 4) {
+        printf("Invalid number of arguments\n");
         return 1;
     }
-    text = read_file(arg->infile, &size);
-    if (text == NULL) {
-        free_mem(arg, text, utf_text);
+    if (strcmp(argv[2], "cp")!=0 && strcmp(argv[2], "cp-1251")!=0 && strcmp(argv[2], "CP-1251")!=0 &&
+    strcmp(argv[2], "koi")!=0 && strcmp(argv[2], "koi8-r")!=0 && strcmp(argv[2], "KOI8-R")!=0 &&
+    strcmp(argv[2], "iso")!=0 && strcmp(argv[2], "iso-8859-5")!=0 && strcmp(argv[2], "ISO-8859-5")!=0) {
+        printf("Wrong encoding entered\n");
         return 1;
     }
-    if (arg->code == 'k' || arg->code == 'K') {
-        utf_text = koi(text, size);
+    if (argv[2][0] == 'k' || argv[2][0] == 'K') {
+        if (koi(argv[1], argv[3]) == 1){
+            return 1;
+        }
     }
     else {
-        utf_text = cp_iso(text, size, arg->code);
+        if (cp_iso(argv[1], argv[3], argv[2][0]) == 1){
+            return 1;
+        }
     }
-    if (utf_text == NULL) {
-        free_mem(arg, text, utf_text);
-        return 1;
-    }
-    //printf("%s\n",utf_text);
-    write_file(utf_text, arg->outfile);
-    free_mem(arg, text, utf_text);
     return 0;
 }
