@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "encode.h"
-
+ 
 //Функция конвертора из CP-1251 и ISO-8859-5 в UTF-8
 int cp_iso(char *name_infile, char *name_outfile, char code) {
     FILE *infile = fopen(name_infile, "rb");
